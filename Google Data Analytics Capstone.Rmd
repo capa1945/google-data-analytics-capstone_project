@@ -1,0 +1,153 @@
+---
+title: "Google Data Analytics Capstone"
+author: "Chen"
+date: '2022-06-16'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load the necessary packages
+
+```{r message=FALSE, warning=FALSE, , message=FALSE, paged.print=FALSE}
+library(tidyverse)
+library(skimr)
+library(lubridate)
+library(hms)
+library(janitor)
+```
+
+## Step 1: Import Data
+
+Load csv files here
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+trip_202106 <- read_csv("202106-divvy-tripdata.csv")
+trip_202107 <- read_csv("202107-divvy-tripdata.csv")
+trip_202108 <- read_csv("202108-divvy-tripdata.csv")
+trip_202109 <- read_csv("202109-divvy-tripdata.csv")
+trip_202110 <- read_csv("202110-divvy-tripdata.csv")
+trip_202111 <- read_csv("202111-divvy-tripdata.csv")
+trip_202112 <- read_csv("202112-divvy-tripdata.csv")
+trip_202201 <- read_csv("202201-divvy-tripdata.csv")
+trip_202202 <- read_csv("202202-divvy-tripdata.csv")
+trip_202203 <- read_csv("202203-divvy-tripdata.csv")
+trip_202204 <- read_csv("202204-divvy-tripdata.csv")
+trip_202205 <- read_csv("202205-divvy-tripdata.csv")
+```
+
+Check whether the data frames created will successfully bind together by rows
+
+While the column names don't have to be in the exact same order, the data frames need to match perfectly with one another before merging them into a single one
+
+If not, rename columns to make them consistent with each other
+
+If necessary, change data types of particular columns so that they can stack correctly (when using bind_rows function)
+
+```{r}
+compare_df_cols_same (trip_202106, trip_202107, trip_202108, trip_202109, 
+                      trip_202110, trip_202111, trip_202112, trip_202201, 
+                      trip_202202, trip_202203, trip_202204, trip_202205,
+                      bind_method = 'rbind')
+```
+
+Inspect the data frames and look for inconsistencies
+
+```{r}
+str(trip_202106)
+str(trip_202107)
+str(trip_202108)
+str(trip_202109)
+str(trip_202110)
+str(trip_202111)
+str(trip_202112)
+str(trip_202201)
+str(trip_202202)
+str(trip_202203)
+str(trip_202204)
+str(trip_202205)
+```
+
+Merge the data frames into one
+
+```{r}
+merged_trip <- rbind(trip_202106, trip_202107, trip_202108, trip_202109, 
+                         trip_202110, trip_202111, trip_202112, trip_202201, 
+                         trip_202202, trip_202203, trip_202204, trip_202205)
+```
+
+## Step 2: Clean and Organize Data
+
+Inspect the data frame that has been created
+
+```{r}
+colnames(merged_trip) # returns the column names of the data frame
+nrow(merged_trip) # returns the number of records in the data frame
+head(merged_trip) # returns the first 6 rows of the data frame
+str(merged_trip) # returns the internal structure of the data frame
+skim_without_charts(merged_trip) # returns summary statistics of the data frame
+```
+
+In the data frame there exist entries where rider_length is negative
+
+```{r}
+merged_trip <- merged_trip[!(merged_trip$ride_length < 0),]
+```
+
+Examine whether there exist any missing dates in the observed period of the data
+
+```{r}
+daterange <- seq(min(as.Date(merged_trip$started_at)), 
+                 max(as.Date(merged_trip$started_at)), by = "day")
+daterange[!daterange %in% as.Date(merged_trip$started_at)]
+```
+
+Check whether there are problems that need to be fixed
+
+## Step 3: Transform Data
+
+Create columns that list the date, month, day, and year of each ride
+
+```{r}
+merged_trip$date <- as.Date(format(merged_trip$started_at, "%Y%m%d"), "%Y%m%d") 
+merged_trip$month <- format(merged_trip$started_at, "%m")
+merged_trip$day <- format(merged_trip$started_at, "%d")
+merged_trip$year <- format(merged_trip$started_at, "%Y")
+
+```
+
+Create a column named "ride_length." Calculate the length of each ride by subtracting the column "started_at" from the column "ended_at" and format as HH:MM:SS
+
+```{r}
+merged_trip <- merged_trip %>% 
+  mutate(ride_length = as.numeric(difftime(ended_at, started_at, units = "secs")))
+
+```
+
+Create a column called "day_of_week." Calculate the day of the week that each ride started
+
+```{r}
+Sys.setlocale("LC_TIME", "English")
+merged_trip$day_of_week <- weekdays(merged_trip$started_at)
+```
+
+Create a column called "hour". Calculate the hour of the day that each ride started
+
+```{r}
+merged_trip <- merged_trip %>% 
+  mutate(hour = hour(started_at))
+```
+
+## Export the data to csv file for further analysis
+
+```{r}
+write.csv(merged_trip, "merged_tripdata.csv")
+```
